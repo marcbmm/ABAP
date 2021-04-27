@@ -1,0 +1,321 @@
+*"* use this source file for the definition and implementation of
+*"* local helper classes, interface definitions and type
+*"* declarations
+class lcl_salv_model_list definition inheriting from cl_salv_model_base.
+
+  public section.
+
+    class-methods:
+      get_grid
+        importing
+          io_salv_model          type ref to cl_salv_model
+        returning
+          value(ro_gui_alv_grid) type ref to cl_gui_alv_grid
+        raising
+          cx_salv_msg,
+
+      get_tree
+        importing
+          io_salv_model  type ref to cl_salv_model
+        returning
+          value(ro_tree) type ref to cl_gui_alv_tree
+        raising
+          cx_salv_msg.
+
+endclass.                    "lcl_salv_model_list DEFINITION
+*
+class lcl_salv_model_list implementation.
+  method get_grid.
+    data:
+      lo_grid_adap type ref to cl_salv_grid_adapter,
+      lo_fs_adap   type ref to cl_salv_fullscreen_adapter,
+      lo_root      type ref to cx_root.
+
+    try .
+        lo_grid_adap ?= io_salv_model->r_controller->r_adapter.
+      catch cx_root into lo_root.
+        "could be fullscreen adaptper
+        try .
+            lo_fs_adap ?= io_salv_model->r_controller->r_adapter.
+          catch cx_root into lo_root.
+            raise exception type cx_salv_msg
+              exporting
+                previous = lo_root
+                msgid    = '00'
+                msgno    = '001'
+                msgty    = 'E'
+                msgv1    = 'Check PREVIOUS exception'.
+        endtry.
+    endtry.
+
+    if lo_grid_adap is not initial.
+      ro_gui_alv_grid = lo_grid_adap->get_grid( ).
+    elseif lo_fs_adap is not initial.
+      ro_gui_alv_grid = lo_fs_adap->get_grid( ).
+    else.
+      raise exception type cx_salv_msg
+        exporting
+          msgid = '00'
+          msgno = '001'
+          msgty = 'W'
+          msgv1 = 'Adapter is not bound yet'.
+    endif.
+
+  endmethod.                    "get_grid
+
+  method get_tree.
+
+    data:
+      lo_tree_adap type ref to cl_salv_tree_adapter,
+      lo_root      type ref to cx_root.
+
+    try .
+        lo_tree_adap ?= io_salv_model->r_controller->r_adapter.
+      catch cx_root into lo_root.
+        raise exception type cx_salv_msg
+          exporting
+            previous = lo_root
+            msgid    = '00'
+            msgno    = '001'
+            msgty    = 'E'
+            msgv1    = 'Check PREVIOUS exception'.
+    endtry.
+
+    if lo_tree_adap is not bound.
+      raise exception type cx_salv_msg
+        exporting
+          msgid = '00'
+          msgno = '001'
+          msgty = 'W'
+          msgv1 = 'Adapter is not bound yet'.
+    endif.
+    ro_tree = lo_tree_adap->r_tree.
+
+  endmethod.                    "get_tree
+endclass.                    "lcl_salv_model_list IMPLEMENTATION
+class lcl_event_handler definition.
+  public section.
+    methods:
+      on_after_refresh for event after_refresh of cl_gui_alv_grid
+        importing
+          sender,
+     on_data_change FOR EVENT data_changed_finished OF cl_gui_alv_grid
+        IMPORTING
+            e_modified
+            et_good_cells,
+      on_ucomm FOR EVENT user_command OF cl_gui_alv_grid
+        IMPORTING
+            e_ucomm,
+      on_toolbar      for event toolbar      of cl_gui_alv_grid
+        importing
+          e_object
+          e_interactive
+          sender.
+    data: t_salv type standard table of ref to cl_salv_table.
+endclass.
+*
+class lcl_event_handler implementation.
+  method on_data_change.
+*    data: lo_grid type ref to cl_gui_alv_grid.
+*    data: ls_layout type lvc_s_layo.
+*    data: lo_salv type ref to cl_salv_table.
+*    try .
+*        loop at t_salv into lo_salv.
+*          lo_grid = zcl_np_salv_model=>get_grid( lo_salv ).
+*          check lo_grid eq sender.
+*
+*                break-point.
+*
+*        endloop.
+*      catch cx_salv_error.
+*    endtry.
+break-point.
+  endmethod.
+  method on_ucomm.
+    break-point.
+  endmethod.
+  method on_after_refresh.
+    data: lo_grid type ref to cl_gui_alv_grid.
+    data: ls_layout type lvc_s_layo.
+    data: lo_salv type ref to cl_salv_table.
+    try .
+        loop at t_salv into lo_salv.
+          lo_grid = zcl_np_salv_model=>get_grid( lo_salv ).
+          check lo_grid eq sender.
+
+          "deregister the event handler
+          set handler me->on_after_refresh
+          for all instances
+          activation space.
+
+          "Set editable
+
+
+          data lt_fieldcatalog  type lvc_t_fcat.
+
+          lo_grid->register_edit_event( i_event_id = cl_gui_alv_grid=>mc_evt_modified ).
+
+          lo_grid->get_frontend_fieldcatalog(
+
+             importing
+
+                et_fieldcatalog = lt_fieldcatalog ).
+
+          if zcl_np_salv_model=>O_edit_all = abap_on or zcl_np_salv_model=>o_edit_fields is initial.
+
+            ls_layout-edit = 'X'.
+            lo_grid->set_frontend_layout( ls_layout ).
+
+          else.
+
+          loop at lt_fieldcatalog assigning field-symbol(<ls_fieldcatalog>).
+
+            check <ls_fieldcatalog> is assigned.
+
+            if line_exists(
+                zcl_np_salv_model=>o_edit_fields[ table_line = <ls_fieldcatalog>-fieldname ]
+            ).
+
+              <ls_fieldcatalog>-edit = abap_on.
+
+            endif.
+
+          endloop.
+
+          lo_grid->set_frontend_fieldcatalog( lt_fieldcatalog ).
+
+            endif.
+
+          lo_grid->set_ready_for_input( 1 ).
+        endloop.
+      catch cx_salv_error.
+    endtry.
+  endmethod.                    "on_AFTER_REFRESH
+*
+  method on_toolbar.
+
+    data: lo_grid type ref to cl_gui_alv_grid.
+    data: ls_layout type lvc_s_layo.
+    data: mt_toolbar type ttb_button.
+    data: ls_toolbar like line of mt_toolbar.
+    data: lo_salv type ref to cl_salv_table.
+
+    try .
+        loop at t_salv into lo_salv.
+          lo_grid = zcl_np_salv_model=>get_grid( lo_salv ).
+          if lo_grid eq sender.
+            exit.
+          else.
+            clear lo_grid.
+          endif.
+        endloop.
+      catch cx_salv_msg.
+        exit.
+    endtry.
+
+    check lo_grid is bound.
+    check lo_grid->is_ready_for_input( ) = 1.
+
+*… Toolbar Button CHECK
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_check.
+    ls_toolbar-quickinfo  = text-053.  "Eingaben prfen
+    ls_toolbar-icon        = icon_check.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Seperator
+    clear ls_toolbar.
+    ls_toolbar-function    = '&&SEP01'.
+    ls_toolbar-butn_type  = 3.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button CUT
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_cut.
+    ls_toolbar-quickinfo  = text-046.  "Ausschneiden
+    ls_toolbar-icon        = icon_system_cut.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button COPY
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_copy.
+    ls_toolbar-quickinfo  = text-045.                        " Kopieren
+    ls_toolbar-icon        = icon_system_copy.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button PASTE OVER ROW
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_paste.
+    ls_toolbar-quickinfo  = text-047.
+    ls_toolbar-icon        = icon_system_paste.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button PASTE NEW ROW
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_paste_new_row.
+    ls_toolbar-quickinfo  = text-063.
+    ls_toolbar-icon        = icon_system_paste.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button UNDO
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_undo.
+    ls_toolbar-quickinfo  = text-052.  "Rckgngig
+    ls_toolbar-icon        = icon_system_undo.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Separator
+    clear ls_toolbar.
+    ls_toolbar-function    = '&&SEP02'.
+    ls_toolbar-butn_type  = 3.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button APPEND ROW
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_append_row.
+    ls_toolbar-quickinfo  = text-054.  "Zeile anhngen
+    ls_toolbar-icon        = icon_create.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button INSERT ROW
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_insert_row.
+    ls_toolbar-quickinfo  = text-048.  "Zeile einfgen
+    ls_toolbar-icon        = icon_insert_row.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button DELETE ROW
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_delete_row.
+    ls_toolbar-quickinfo  = text-049.  "Zeile lschen
+    ls_toolbar-icon        = icon_delete_row.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Button COPY ROW
+    clear ls_toolbar.
+    ls_toolbar-function    = cl_gui_alv_grid=>mc_fc_loc_copy_row.
+    ls_toolbar-quickinfo  = text-051.  "Duplizieren
+    ls_toolbar-icon        = icon_copy_object.
+    ls_toolbar-disabled    = space.
+    append ls_toolbar to mt_toolbar.
+
+*… Toolbar Separator
+    clear ls_toolbar.
+    ls_toolbar-function    = '&&SEP03'.
+    ls_toolbar-butn_type  = 3.
+    append ls_toolbar to mt_toolbar.
+
+    append lines of mt_toolbar to e_object->mt_toolbar.
+
+  endmethod.                    "on_toolbar
+
+endclass.                    "lcl_event_handler IMPLEMENTATION
