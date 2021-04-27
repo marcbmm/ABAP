@@ -1,0 +1,104 @@
+class ZCL_NP_SALV_MODEL definition
+  public
+  final
+  create public .
+
+public section.
+    CLASS-METHODS get_grid
+      IMPORTING
+        !io_salv_model TYPE REF TO cl_salv_model
+      RETURNING
+        value(eo_grid) TYPE REF TO cl_gui_alv_grid
+      RAISING
+        cx_salv_error.
+     CLASS-METHODS get_tree
+      IMPORTING
+        !io_salv_model TYPE REF TO cl_salv_model
+      RETURNING
+        value(ro_tree) TYPE REF TO cl_gui_alv_tree
+      RAISING
+        cx_salv_error.
+  class-methods SET_EDITABLE
+    importing
+      !IO_SALV type ref to CL_SALV_TABLE
+      !IO_edit_ALL type ABAP_BOOL optional
+      !IO_edit_fields type STRINGTAB optional.
+
+      class-data:
+       O_edit_ALL type ABAP_BOOL
+      ,O_edit_fields type STRINGTAB.
+protected section.
+private section.
+class-data o_event_h type ref to OBJECT.
+ENDCLASS.
+
+
+
+CLASS ZCL_NP_SALV_MODEL IMPLEMENTATION.
+
+
+METHOD get_grid.
+
+    DATA:  lo_error      TYPE REF TO cx_salv_msg.
+
+    IF io_salv_model->model NE if_salv_c_model=>table.
+      RAISE EXCEPTION TYPE cx_salv_msg
+        EXPORTING
+          msgid = '00'
+          msgno = '001'
+          msgty = 'E'
+          msgv1 = 'Incorrect SALV Type'.
+    ENDIF.
+
+    eo_grid = lcl_salv_model_list=>get_grid( io_salv_model ).
+
+  ENDMETHOD.                    "get_grid
+
+
+  METHOD get_tree.
+
+    DATA:  lo_error      TYPE REF TO cx_salv_msg.
+
+    IF io_salv_model->model NE if_salv_c_model=>tree.
+      RAISE EXCEPTION TYPE cx_salv_msg
+        EXPORTING
+          msgid = '00'
+          msgno = '001'
+          msgty = 'E'
+          msgv1 = 'Incorrect SALV Type'.
+    ENDIF.
+
+    ro_tree = lcl_salv_model_list=>get_tree( io_salv_model ).
+
+  ENDMETHOD.                    "GET_TREE
+
+
+METHOD set_editable.
+DATA: lo_event_h TYPE REF TO lcl_event_handler.
+
+  O_edit_ALL = IO_edit_ALL.
+  O_edit_fields = IO_edit_fields.
+
+"Event handler
+IF zcl_np_salv_model=>o_event_h IS NOT BOUND.
+CREATE OBJECT zcl_np_salv_model=>o_event_h
+TYPE lcl_event_handler.
+ENDIF.
+
+lo_event_h ?= zcl_np_salv_model=>o_event_h.
+APPEND io_salv TO lo_event_h->t_salv.
+
+"To gain an access to the underlying object and
+"  do the magic
+SET HANDLER lo_event_h->on_after_refresh
+FOR ALL INSTANCES
+ACTIVATION 'X'.
+
+"only for GRID, would need to add the toolbar buttons
+IF io_salv->get_display_object( ) = 3.
+SET HANDLER lo_event_h->on_toolbar
+FOR ALL INSTANCES
+ACTIVATION 'X'.
+ENDIF.
+endmethod.
+ENDCLASS.
