@@ -1,0 +1,18 @@
+class lcl_handler definition.
+
+  public section.
+    methods:
+      on_ucomm for event added_function of cl_salv_events_table "wont work with cl_gui_alv_grid
+        importing
+          e_salv_function,
+
+      handle_toolbar for event toolbar of cl_gui_alv_grid
+        importing e_interactive e_object sender,
+
+      handle_hotspot for event hotspot_click of cl_gui_alv_grid
+        importing e_column_id e_row_id es_row_no sender.
+        
+  "WONT WORK
+    "on_ucomm wont work with cl_gui_alv_grid
+    "handle_command for event user_command of cl_gui_alv_grid isn't called 
+    "handle_menu_button of cl_gui_alv_grid isn't called 
