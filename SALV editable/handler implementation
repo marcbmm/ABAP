@@ -1,0 +1,135 @@
+  method handle_toolbar.
+    
+    "can be used to load grid in other handlers:    
+    try.
+        o_grid = zcl_np_salv_model=>get_grid( o_salv ). "o_alv and o_grid: global ref of respective alv objects
+      catch cx_salv_error.
+    endtry.
+
+  endmethod.
+  
+  method on_ucomm.
+
+    case e_salv_function.
+
+      when 'EXEC'.
+          call method exec
+            changing
+              ch_output = t_output."Global table with output
+
+    when 'CALL_TCODE'.
+      call transaction 'TCODE'.
+
+    endcase.
+  endmethod.  
+  
+  method handle_hotspot.
+
+    read table t_output into data(ls_output) index es_row_no-row_id.
+    if sy-subrc = 0.
+
+      case e_column_id.
+
+        when 'NAME_OF_COLUMN_CLICKED'.
+
+          set parameter id 'BLN' field ls_output-belnr.
+          set parameter id 'GJR' field ls_output-ryear.
+          set parameter id 'BUK' field ls_output-rbukrs.
+          call transaction 'FB03' and skip first screen.
+
+      endcase.
+
+    endif.
+
+  endmethod. 
+  
+  method exec.
+    
+    "Using o_grid with reference obtained in method handle_toolbar
+    o_grid->get_selected_rows(
+      importing
+        et_index_rows = data(index_rows) ).
+
+    if index_rows is initial.
+      message 'Error' Type 'S' display like 'E'.
+      return.
+    else.
+
+    t_output_selected = value ty_output_tab( 
+      for line in index_rows
+        ( t_output[ line ] ) 
+    ).  
+  
+  endmethod.
+  
+  method start_alv.
+  
+         try.
+
+            cl_salv_table=>factory(
+                                      importing
+                                          r_salv_table = data(lo_alv)
+                                      changing
+                                          t_table      = t_table
+            ).
+        
+        lo_alv->get_functions( )->set_all( 'X' ).
+
+        o_salv = lo_alv.
+        
+        "Enable box for line selection
+        zcl_np_salv_model=>set_editable(
+            IO_SALV = lo_alv
+            IO_edit_fields = VALUE #( ( |ENABLE_LINE_SELECT_BOX| ) )
+        ).
+        
+        "set default status, can also be used for custom status adding new buttons
+        call method lo_alv->set_screen_status
+          exporting
+            report        = 'SALV_DEMO_TABLE_SELECTIONS'
+            pfstatus      = 'SALV_STANDARD'
+            set_functions = lo_alv->c_functions_all.
+
+        "Column settings
+        data(lo_cols) = lo_alv->get_columns( ).
+
+            lo_cols->set_optimize( abap_on ).
+          
+        "Enable Hotspot
+        data: lo_column  type ref to cl_salv_column_table.
+            
+            lo_column ?= lo_cols->get_column( 'BELNR' ).
+            lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+            lo_column->set_icon( if_salv_c_bool_sap=>true ).
+            lo_column->set_long_text( 'BELNR' ).
+        
+        
+        "Hide column
+        loop at lo_cols->get(  ) assigning field-symbol(<column_ref>).
+
+          data(lv_tabix_cols_visible) = sy-tabix.
+
+          lo_column ?= lo_cols->get_column( <column_ref>-columnname ).
+
+          if <column_ref>-columnname = 'ID_RETURN'.
+
+            lo_column->set_visible( abap_false ).
+
+          endif.
+
+        endloop.
+
+        o_handler = new lcl_handler( ).
+
+        "Salv handler
+        set handler o_handler->on_ucomm for lo_alv->get_event( ).
+
+        "Grid handlers
+        set handler: o_handler->handle_toolbar for all instances,
+                     o_handler->handle_hotspot for all instances.
+
+        lo_alv->display( ).
+
+      catch: cx_salv_msg, cx_salv_not_found into data(lo_ex_msg).
+
+    endtry.
