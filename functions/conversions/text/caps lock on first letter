@@ -1,0 +1,25 @@
+method capslock_initials.
+
+DATA: l_count TYPE i,
+      l_len TYPE i.
+
+rv_string = iv_string.
+
+l_len = strlen( rv_string ).
+CONDENSE rv_string.
+TRANSLATE rv_string+0(1) TO UPPER CASE.
+
+DO l_len TIMES.
+  IF rv_string+l_count(1) EQ space.
+    ADD 1 TO l_count.
+    TRANSLATE rv_string+l_count(1) TO UPPER CASE.
+    CONTINUE.
+  ENDIF.
+
+  ADD 1 TO l_count.
+  if l_count < l_len.
+    TRANSLATE rv_string+l_count(1) TO LOWER CASE.
+  endif.
+ENDDO.
+
+endmethod.
