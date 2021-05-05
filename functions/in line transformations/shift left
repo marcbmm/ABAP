@@ -1,0 +1,7 @@
+  method shift_string_left.
+
+    r_text = conv string( e_text ).
+
+    shift r_text left deleting leading ''.
+
+  endmethod.
