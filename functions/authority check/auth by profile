@@ -1,0 +1,18 @@
+  method check_auth_tin3.
+
+    data:
+      lt_activitygroups type standard table of bapiagr,
+      lt_return         type standard table of bapiret2.
+
+    call function 'BAPI_USER_GET_DETAIL'
+      exporting
+        username       = sy-uname
+      tables
+        return         = lt_return
+        activitygroups = lt_activitygroups.
+
+    check line_exists( lt_activitygroups[ agr_name = 'Z:TI_NIVEL_3' ] ).
+
+    r_result = abap_true.
+
+  endmethod.
