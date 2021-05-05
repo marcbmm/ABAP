@@ -1,0 +1,46 @@
+  method get_struc_by_name.
+
+    data: lo_structdescr type ref to cl_abap_structdescr,
+          lo_tabdescr    type ref to cl_abap_tabledescr.
+
+    data(lo_typedescr) = cl_abap_typedescr=>describe_by_name( iv_name ).
+
+    if lo_typedescr->kind = 'T'.
+
+      lo_tabdescr ?= lo_typedescr.
+
+      data(lv_type) = lo_tabdescr->get_table_line_type( ).
+
+      lo_structdescr ?= cl_abap_typedescr=>describe_by_data( lv_type ).
+
+    elseif lo_typedescr->kind = 'S'.
+
+      lo_structdescr ?= lo_typedescr.
+
+    else.
+
+      exit.
+
+    endif.
+
+    try.
+
+        data(ls_type_struct) = cl_abap_structdescr=>create( p_components = lo_structdescr->get_components( ) ).
+
+        create data rs_return type handle ls_type_struct.
+
+*        data l_data    type ref to data.
+*
+*        create data l_data type handle ls_type_struct.
+*
+*        assign l_data->* to field-symbol(<fs_return>).
+*
+*        check <fs_return> is assigned.
+*
+*        rs_return = <fs_return>.
+
+      catch cx_sy_struct_creation .
+
+    endtry.
+
+  endmethod.
