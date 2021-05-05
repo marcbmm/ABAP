@@ -1,0 +1,23 @@
+  method read_screen_fields.
+
+    data: lv_step_line like sy-stepl.
+
+    call function 'DYNP_GET_STEPL'
+      importing
+        povstepl        = lv_step_line
+      exceptions
+        stepl_not_found = 1
+        others          = 2.
+
+    data(lt_dyn_fields_read) = value dynpread_t(
+       ( fieldname = e_fieldname stepl = lv_step_line )
+    ).
+
+    call function 'DYNP_VALUES_READ'
+      exporting
+        dyname     = sy-cprog
+        dynumb     = e_dynnr
+      tables
+        dynpfields = lt_dyn_fields_read.
+
+  endmethod.
