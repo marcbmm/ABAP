@@ -1,0 +1,11 @@
+  method add_days_to_date.
+
+    call function 'ADD_BUSINESS_DAYS_TO_DATE'
+      exporting
+        iv_reference_date          = i_date
+        iv_number_of_business_days = i_days
+        it_calendars               = value vtb_tab_calendar( ( 'BR' ) )
+      importing
+        ev_date                    = r_final_date.
+
+  endmethod.
