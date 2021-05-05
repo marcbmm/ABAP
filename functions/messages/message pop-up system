@@ -1,0 +1,47 @@
+  method messages_count.
+
+    call function 'MESSAGES_COUNT'
+      importing
+        count = rv_count.
+
+  endmethod.
+
+
+  method messages_initialize.
+
+    call function 'MESSAGES_INITIALIZE'
+      exceptions
+        log_not_active       = 1
+        wrong_identification = 2
+        others               = 3.
+
+  endmethod.
+
+
+  method messages_show.
+
+    call function 'MESSAGES_SHOW'
+      exceptions
+        inconsistent_range = 1
+        no_messages        = 2
+        others             = 3.
+
+  endmethod.
+
+
+  method messages_store.
+
+    call function 'MESSAGE_STORE'
+      exporting
+        arbgb                  = e_msg_id
+        msgty                  = e_msg_ty
+        msgv1                  = e_msg_v1
+        msgv2                  = e_msg_v2
+        txtnr                  = e_msg_nr
+        zeile                  = e_msg_zl
+      exceptions
+        message_type_not_valid = 1
+        not_active             = 2
+        others                 = 3.
+
+  endmethod.
