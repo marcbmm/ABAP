@@ -1,0 +1,45 @@
+METHOD GET_RANGES.
+
+  FIELD-SYMBOLS:
+    <fs_rg_line> LIKE LINE OF re_range.
+
+  SELECT sign
+         opti AS option
+         low
+         high
+    INTO CORRESPONDING FIELDS OF TABLE re_range
+    FROM tvarvc
+    WHERE name = im_const.
+
+  IF sy-subrc <> 0.
+
+    SELECT valsign AS sign
+           valoption AS option
+           valfrom AS low
+           valto AS high
+      INTO CORRESPONDING FIELDS OF TABLE re_range
+      FROM setleaf
+      WHERE setname = im_const.
+
+  ENDIF.
+
+  LOOP AT re_range ASSIGNING <fs_rg_line>.
+    IF <fs_rg_line>-sign IS INITIAL.
+      <fs_rg_line>-sign = 'I'.
+    ENDIF.
+
+    IF <fs_rg_line>-option IS INITIAL.
+      IF <fs_rg_line>-high IS INITIAL.
+        <fs_rg_line>-option = 'EQ'.
+      ELSE.
+        <fs_rg_line>-option = 'BT'.
+      ENDIF.
+    ENDIF.
+
+  ENDLOOP.
+
+  IF re_range IS INITIAL AND im_no_msg IS INITIAL.
+    MESSAGE w000(zmm) WITH text-001 im_const.
+  ENDIF.
+
+ENDMETHOD.
