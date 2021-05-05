@@ -1,0 +1,14 @@
+  method select_single.
+
+    r_data = get_struc_by_name( i_from ).
+
+    assign r_data->* to field-symbol(<fs_tab_line>).
+
+    select single *
+       from (i_from)
+       where (i_where)
+       into @<fs_tab_line>.
+
+    e_result = <fs_tab_line>.
+
+  endmethod.
