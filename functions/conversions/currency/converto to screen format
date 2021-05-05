@@ -1,0 +1,59 @@
+  method display_as_curr.
+
+    check e_string is not initial.
+
+    data(len_no_decimals) = ( strlen( e_string ) - 3 ) - 1.
+
+    data(len_separator) = cond #(
+      when len_no_decimals mod 3 = 0
+       then 3
+      else len_no_decimals mod 3
+    ).
+
+    data len_converted like len_separator.
+
+    do cond numc10(
+            let len_remainder = len_no_decimals mod 3 in
+            when len_remainder = 0
+             then len_no_decimals div 3
+            else 1 + len_no_decimals div 3
+       ) times.
+
+      r_curr = cond #(
+           let input = e_string(len_no_decimals) in
+           when input is not initial
+            then r_curr
+              && input+len_converted(len_separator)
+              && |.|
+      ).
+
+      add len_separator to len_converted.
+
+      len_separator = 3.
+
+      get run time field data(lv_run_time).
+
+      check lv_run_time > 10000000000.
+
+      exit.
+
+    enddo.
+
+    data(len_new_format) = strlen( r_curr ) - 1.
+
+    data(len_decimals) = len_no_decimals + 1.
+
+    r_curr = cond #(
+      when len_new_format > 0
+       then |{ r_curr(len_new_format) },{ e_string+len_decimals(2) }|
+       else r_curr
+    ).
+
+    r_curr = cond #(
+         let last_pos = strlen( e_string ) - 1 in
+         when e_string+last_pos(1) = '-'
+          then '-' && r_curr
+         else r_curr
+    ).
+
+  endmethod.
