@@ -1,0 +1,12 @@
+  method last_day_of_month.
+
+    call function 'RP_LAST_DAY_OF_MONTHS'
+      exporting
+        day_in            = conv syst_datum( iv_date )
+      importing
+        last_day_of_month = rv_last_day_date
+      exceptions
+        day_in_no_date    = 1
+        others            = 2.
+
+  endmethod.
