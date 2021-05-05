@@ -1,0 +1,5 @@
+      get run time field data(lv_run_time).
+
+      check lv_run_time > 10000000000.
+
+      exit.
