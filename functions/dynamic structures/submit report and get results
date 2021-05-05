@@ -1,0 +1,65 @@
+  method submit_report.
+
+    data: rspar_tab type table of rsparams,
+          range_tab type range of c.
+
+    /ui2/cl_json=>deserialize(
+        exporting
+            json = it_json_rspar_tab
+            pretty_name = /ui2/cl_json=>pretty_mode-low_case
+        changing data = rspar_tab
+    ).
+
+    try.
+
+        data(lv_rep_name) = rspar_tab[ selname = 'REPORT_N' ]-low.
+
+        try.
+
+            data(lv_sel_screen) = rspar_tab[ selname = 'SEL_SCREEN' ]-low.
+
+          catch cx_sy_itab_line_not_found.
+
+            lv_sel_screen = '1000'.
+
+        endtry.
+
+        if lv_sel_screen is initial.
+
+
+
+        endif.
+
+        cl_salv_bs_runtime_info=>set(
+           exporting display = abap_false
+           metadata = abap_true
+           data = abap_true
+        ).
+
+        submit (lv_rep_name) using selection-screen lv_sel_screen
+                       with selection-table rspar_tab
+                       exporting list to memory and return.
+
+        break mbmm.
+
+        data gt_alv_table type ref to data.
+
+        try.
+            cl_salv_bs_runtime_info=>get_data_ref(
+            importing r_data = gt_alv_table ).
+            assign gt_alv_table->* to field-symbol(<f_alv_data>).
+
+            cl_salv_bs_runtime_info=>clear_all( ).
+
+            r_json_outtab = /ui2/cl_json=>serialize( data = <f_alv_data>
+              pretty_name = /ui2/cl_json=>pretty_mode-low_case ).
+
+          catch cx_salv_bs_sc_runtime_info.
+            message 'Erro ao ler tabela de output' type 'S' display like 'E'.
+        endtry.
+
+      catch cx_sy_itab_line_not_found.
+
+    endtry.
+
+  endmethod.
