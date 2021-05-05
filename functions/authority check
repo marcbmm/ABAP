@@ -1,0 +1,11 @@
+    call function 'AUTHORITY_CHECK_TCODE'
+      exporting
+        tcode  = e_tcode
+      exceptions
+        ok     = 1
+        not_ok = 2
+        others = 3.
+
+    if sy-subrc <> 1.
+      message s056(zfi) display like 'E'.
+    endif.
