@@ -1,0 +1,37 @@
+METHOD GET_PREVIOUS_WDAY.
+
+  DATA: ln_wotnr TYPE p.
+
+  date_out = date_in - 1.
+
+  DO.
+    CALL FUNCTION 'DAY_IN_WEEK'
+      EXPORTING
+        datum = date_out
+      IMPORTING
+        wotnr = ln_wotnr.
+    IF ln_wotnr NE 6 AND
+       ln_wotnr NE 7.
+      EXIT.
+    ELSE.
+      SUBTRACT 1 FROM date_out.
+    ENDIF.
+  ENDDO.
+
+  CALL FUNCTION 'DATE_CONVERT_TO_FACTORYDATE'
+    EXPORTING
+      correct_option               = '-'
+      date                         = date_out
+      factory_calendar_id          = 'BR'
+    IMPORTING
+      date                         = date_out
+    EXCEPTIONS
+      calendar_buffer_not_loadable = 1
+      correct_option_invalid       = 2
+      date_after_range             = 3
+      date_before_range            = 4
+      date_invalid                 = 5
+      factory_calendar_not_found   = 6
+      OTHERS                       = 7.
+
+ENDMETHOD.
