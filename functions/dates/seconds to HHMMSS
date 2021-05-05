@@ -1,0 +1,18 @@
+  method seconds_to_hhmmss.
+
+    data(lv_horas_disponiveis) = iv_seconds div 3600.
+    data(lv_min_disponiveis) = iv_seconds mod 3600.
+    data(lv_seg_disponiveis) = lv_min_disponiveis mod 60.
+    lv_min_disponiveis = lv_min_disponiveis div 60.
+
+    if iv_separator = abap_on.
+
+      rv_hhmmss = |{ conv numc2( lv_horas_disponiveis ) }:{ conv numc2( lv_min_disponiveis ) }:{ conv numc2( lv_seg_disponiveis ) }|.
+
+    else.
+
+      rv_hhmmss = conv numc2( lv_horas_disponiveis ) && conv numc2( lv_min_disponiveis ) && conv numc2( lv_seg_disponiveis ).
+
+    endif.
+
+  endmethod.
