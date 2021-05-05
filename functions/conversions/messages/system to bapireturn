@@ -1,0 +1,30 @@
+METHOD syst_to_bapiret2.
+
+  DATA: lc_msgno TYPE msgnr.
+
+  MOVE: i_syst-msgid TO e_bapiret2-id,
+        i_syst-msgty TO e_bapiret2-type,
+        i_syst-msgno TO e_bapiret2-number,
+        i_syst-msgno TO lc_msgno,
+        i_syst-msgv1 TO e_bapiret2-message_v1,
+        i_syst-msgv2 TO e_bapiret2-message_v2,
+        i_syst-msgv3 TO e_bapiret2-message_v3,
+        i_syst-msgv4 TO e_bapiret2-message_v4.
+
+  CALL FUNCTION 'MESSAGE_PREPARE'
+    EXPORTING
+      language               = sy-langu
+      msg_id                 = e_bapiret2-id
+      msg_no                 = lc_msgno
+      msg_var1               = e_bapiret2-message_v1
+      msg_var2               = e_bapiret2-message_v2
+      msg_var3               = e_bapiret2-message_v3
+      msg_var4               = e_bapiret2-message_v4
+    IMPORTING
+      msg_text               = e_bapiret2-message
+    EXCEPTIONS
+      function_not_completed = 1
+      message_not_found      = 2
+      OTHERS                 = 3.
+
+ENDMETHOD.
