@@ -1,0 +1,14 @@
+  method go_back_months.
+
+    data lv_backmonths type numc3.
+
+    lv_backmonths = cond #( when iv_backmonths is not initial then iv_backmonths else 1 ).
+
+    call function 'CCM_GO_BACK_MONTHS'
+      exporting
+        currdate   = iv_date
+        backmonths = lv_backmonths
+      importing
+        newdate    = rv_date.
+
+  endmethod.
