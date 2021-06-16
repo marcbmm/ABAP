@@ -1,0 +1,43 @@
+class zcl_enho_pm definition
+  public
+  final
+  create public .
+
+  public section.
+
+    class-methods get_instance
+      returning
+        value(re_instance) type ref to zcl_enho_pm .
+    methods set_gdatum_to_sydate
+      returning
+        value(rv_datum) type datab .
+  protected section.
+  private section.
+
+    class-data instance type ref to zcl_enho_pm .
+    class-data okcode_old type sy-ucomm .
+ENDCLASS.
+
+
+
+CLASS ZCL_ENHO_PM IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Public Method ZCL_ENHO_PM=>GET_INSTANCE
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] RE_INSTANCE                    TYPE REF TO ZCL_ENHO_PM
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method get_instance.
+    re_instance = instance = cond #( when instance is bound then instance else new zcl_enho_pm( ) ).
+  endmethod.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_ENHO_PM->SET_GDATUM_TO_SYDATE
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method set_gdatum_to_sydate.
+    rv_datum = sy-datum.
+  endmethod.
+ENDCLASS.
