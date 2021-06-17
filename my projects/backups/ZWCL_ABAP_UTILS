@@ -1,0 +1,773 @@
+class ZWCL_ABAP_UTILS definition
+  public
+  create public .
+
+*"* public components of class ZWCL_ABAP_UTILS
+*"* do not include other source files here!!!
+public section.
+
+  types:
+    ty_r_dates TYPE RANGE OF faglflexa-budat .
+  types:
+    ty_r_years TYPE RANGE OF faglflexa-ryear .
+  types:
+    ty_r_month TYPE RANGE OF faglflexa-poper .
+  types:
+    ty_r_rvari TYPE RANGE OF rvari_val_255 .
+  types:
+    BEGIN OF ty_log_mod,
+        modificacao TYPE zed_modificacao,
+        usuario     TYPE zed_usuario,
+      END OF ty_log_mod .
+
+  class-data:
+    t_iline type standard table of tline .
+
+  class-methods INITCAPS
+    importing
+      !IV_STRING type STEXT
+    returning
+      value(RV_STRING) type STEXT .
+  class-methods GET_ITAB_FIELDS
+    importing
+      !IT_SELTABLE type STANDARD TABLE
+    returning
+      value(RT_FIELDS) type RSZ_T_STRING .
+  class-methods CONVERT_TO_INTERNAL
+    importing
+      value(EXTERNAL_VALUE) type ANY
+    exporting
+      !INTERNAL_VALUE type ANY .
+  class-methods GET_PREVIOUS_WDAY
+    importing
+      !DATE_IN type DATUM
+    returning
+      value(DATE_OUT) type DATUM .
+  class-methods GET_STVARV
+    importing
+      !I_CONST type TVARVC-NAME
+      !I_NO_MSG type ABAP_BOOL optional
+    returning
+      value(R_RANGE) type EFG_TAB_RANGES .
+  class-methods GET_STVARV_NEW
+    importing
+      !IM_CONST type TVARVC-NAME
+      !IM_NO_MSG type ABAP_BOOL optional
+    returning
+      value(RE_RANGE) type TY_R_RVARI .
+  class-methods AJUSTA_DIRETORIO
+    changing
+      value(R_PATH) type STRING .
+  class-methods SYST_TO_BAPIRET2
+    importing
+      !I_SYST type SYST
+    returning
+      value(E_BAPIRET2) type BAPIRET2 .
+  class-methods GET_MONTHS_YEARS_DATES
+    importing
+      !I_DATES type TY_R_DATES
+    exporting
+      !E_YEARS type TY_R_YEARS
+      !E_MONTH type TY_R_MONTH .
+  class-methods READ_TEXT
+    importing
+      !IV_ID type TDID
+      !IV_LANGUAGE type SPRAS
+      !IV_NAME type TDOBNAME
+      !IV_OBJECT type TDOBJECT
+      !IV_DISPLAY_ERRORS type ABAP_BOOL optional
+    returning
+      value(RT_LINES) like T_ILINE .
+  class-methods SEND_MAIL
+    importing
+      !P_ASSUNTO type ZASSUNTO_EMAIL
+      !P_TITULO type ZTITULO_EMAIL
+      !P_TITULO_CORPO type ZTITULO_CORPO_EMAIL optional
+      !T_TEXTO_CORPO type /ISDFPS/SOLISTI1_T optional
+      !T_RECEIVERS type /ISDFPS/SOMLRECI1_T
+      !T_CONTENTTXT type /ISDFPS/SOLISTI1_T
+      !T_FOOTER type /ISDFPS/SOLISTI1_T optional
+    exceptions
+      TOO_MANY_RECEIVERS
+      DOCUMENT_NOT_SENT
+      DOCUMENT_TYPE_NOT_EXIST
+      OPERATION_NO_AUTHORIZATION
+      PARAMETER_ERROR
+      X_ERROR
+      ENQUEUE_ERROR .
+  class-methods GERAR_LOG_MODIFICACAO
+    returning
+      value(RE_REG_MOD) type TY_LOG_MOD .
+PROTECTED SECTION.
+*"* protected components of class ZCL_ABAP_UTILS
+*"* do not include other source files here!!!
+PRIVATE SECTION.
+*"* private components of class ZCL_ABAP_UTILS
+*"* do not include other source files here!!!
+ENDCLASS.
+
+
+
+CLASS ZWCL_ABAP_UTILS IMPLEMENTATION.
+
+
+METHOD AJUSTA_DIRETORIO.
+
+  DATA: ln_moff TYPE sy-fdpos,
+        lc_dir  TYPE char1024.
+
+  lc_dir = r_path.
+  CONCATENATE lc_dir
+              '|'
+              INTO lc_dir.
+  FIND ALL OCCURRENCES OF '\' IN lc_dir MATCH OFFSET ln_moff.
+  ADD 1 TO ln_moff.
+  IF lc_dir+ln_moff(1) EQ '|'.
+    TRANSLATE lc_dir USING '| '.
+  ELSE.
+    TRANSLATE lc_dir USING '|\'.
+  ENDIF.
+  r_path = lc_dir.
+
+ENDMETHOD.
+
+
+METHOD CONVERT_TO_INTERNAL.
+
+  DATA:
+    lv_convexit TYPE funcname,
+    lv_mask     TYPE string,
+    lv_type     TYPE c,
+    lv_length   TYPE i,
+    lv_offset   TYPE i.
+
+  DESCRIBE FIELD internal_value EDIT MASK lv_mask
+                                TYPE      lv_type.
+
+  IF lv_mask IS INITIAL.
+
+    CASE lv_type.
+      WHEN 'P' OR 'I'. "Numbers
+        TRANSLATE external_value USING '. '.
+        TRANSLATE external_value USING ',.'.
+
+        lv_length = strlen( external_value ).
+        DO lv_length TIMES.
+          lv_offset = sy-index - 1.
+
+          IF external_value+lv_offset(1) CN '0123456789.'.
+            CLEAR external_value+lv_offset(1).
+          ENDIF.
+        ENDDO.
+
+        CONDENSE external_value NO-GAPS.
+
+      WHEN 'D'. "Date (Work for Brazil Format - DD/MM/AAAA)
+        CONCATENATE external_value+6(4)
+                    external_value+3(2)
+                    external_value+0(2)
+                    INTO external_value.
+        CONDENSE external_value NO-GAPS.
+
+      WHEN 'T'. "Time (Work for Brazil Format - HH:MM:SS)
+        TRANSLATE external_value USING ': '.
+        CONDENSE external_value NO-GAPS.
+
+    ENDCASE.
+
+    internal_value = external_value.
+
+  ELSE. "Mask routine
+
+    REPLACE '==' IN lv_mask WITH space.
+    CONDENSE lv_mask NO-GAPS.
+
+    CONCATENATE 'CONVERSION_EXIT_' lv_mask '_INPUT' INTO lv_convexit.
+
+    CALL FUNCTION lv_convexit
+      EXPORTING
+        input  = external_value
+      IMPORTING
+        output = internal_value.
+
+  ENDIF.
+
+ENDMETHOD.
+
+
+  METHOD gerar_log_modificacao.
+
+    DATA lv_data TYPE char10.
+
+    re_reg_mod-usuario = sy-uname.
+    WRITE sy-datum TO lv_data.
+    DATA(lv_str) = replace( val = lv_data sub = '.' with = '' occ = 0 ).
+    re_reg_mod-modificacao = |{ lv_str }_{ sy-uzeit }|.
+
+  ENDMETHOD.
+
+
+METHOD GET_ITAB_FIELDS.
+
+  DATA:
+    lr_table_descr TYPE REF TO cl_abap_tabledescr,
+    lr_struc_descr TYPE REF TO cl_abap_structdescr,
+    lt_comp TYPE cl_abap_structdescr=>component_table,
+    ls_comp LIKE LINE OF lt_comp.
+
+  CLEAR rt_fields.
+
+  lr_table_descr ?=
+    cl_abap_tabledescr=>describe_by_data( it_seltable ).
+
+  lr_struc_descr ?= lr_table_descr->get_table_line_type( ).
+
+  lt_comp = lr_struc_descr->get_components( ).
+
+  LOOP AT lt_comp INTO ls_comp.
+    COLLECT ls_comp-name INTO rt_fields.
+  ENDLOOP.
+
+ENDMETHOD.
+
+
+METHOD get_months_years_dates.
+
+  DATA: la_dates  LIKE LINE OF i_dates,
+        la_years  LIKE LINE OF e_years,
+        la_month  LIKE LINE OF e_month,
+        ln_years  TYPE numc4,
+        ln_months TYPE num6.
+
+  LOOP AT i_dates INTO la_dates.
+    CLEAR: la_years,
+           la_month.
+    IF la_dates-high IS INITIAL.
+      MOVE-CORRESPONDING: la_dates TO la_years,
+                          la_dates TO la_month.
+      la_years-low = la_dates-low(4).
+      la_month-low = la_dates-low+4(2).
+      APPEND: la_years TO e_years,
+              la_month TO e_month.
+    ELSE.
+      IF la_dates-low(6) EQ la_dates-high(6).
+        la_years-sign   = 'I'.
+        la_years-option = 'EQ'.
+        la_years-low    = la_dates-low(4).
+        APPEND la_years TO e_years.
+        la_month-sign   = 'I'.
+        la_month-option = 'EQ'.
+        la_month-low    = la_dates-low+4(2).
+        APPEND la_month TO e_month.
+      ELSEIF la_dates-low(4) EQ la_dates-high(4).
+        la_years-sign   = 'I'.
+        la_years-option = 'EQ'.
+        la_years-low    = la_dates-low(4).
+        APPEND la_years TO e_years.
+        la_month-sign   = 'I'.
+        la_month-option = 'EQ'.
+        la_month-low = la_dates-low+4(2).
+        APPEND la_month TO e_month.
+        ln_months = la_dates-high+4(2) - la_dates-low+4(2).
+        DO ln_months TIMES.
+          ADD 1 TO la_month-low.
+          APPEND la_month TO e_month.
+        ENDDO.
+      ELSE.
+        ln_years = la_dates-high(4) - la_dates-low(4).
+        la_years-sign   = 'I'.
+        la_years-option = 'EQ'.
+        la_years-low    = la_dates-low(4).
+        APPEND la_years TO e_years.
+        DO ln_years TIMES.
+          ADD 1 TO la_years-low.
+          APPEND la_years TO e_years.
+        ENDDO.
+        ln_months = ( la_dates-high+4(2) - la_dates-low+4(2) ) + ( ln_years * 12 ).
+        la_month-sign   = 'I'.
+        la_month-option = 'EQ'.
+        la_month-low    = la_dates-low+4(2).
+        APPEND la_month TO e_month.
+        DO ln_months TIMES.
+          IF la_month-low EQ '12'.
+            la_month-low = '01'.
+          ELSE.
+            ADD 1 TO la_month-low.
+          ENDIF.
+          APPEND la_month TO e_month.
+        ENDDO.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  SORT: e_years,
+        e_month.
+
+  DELETE ADJACENT DUPLICATES FROM: e_years,
+                                   e_month.
+
+ENDMETHOD.
+
+
+METHOD GET_PREVIOUS_WDAY.
+
+  DATA: ln_wotnr TYPE p.
+
+  date_out = date_in - 1.
+
+  DO.
+    CALL FUNCTION 'DAY_IN_WEEK'
+      EXPORTING
+        datum = date_out
+      IMPORTING
+        wotnr = ln_wotnr.
+    IF ln_wotnr NE 6 AND
+       ln_wotnr NE 7.
+      EXIT.
+    ELSE.
+      SUBTRACT 1 FROM date_out.
+    ENDIF.
+  ENDDO.
+
+  CALL FUNCTION 'DATE_CONVERT_TO_FACTORYDATE'
+    EXPORTING
+      correct_option               = '-'
+      date                         = date_out
+      factory_calendar_id          = 'BR'
+    IMPORTING
+      date                         = date_out
+    EXCEPTIONS
+      calendar_buffer_not_loadable = 1
+      correct_option_invalid       = 2
+      date_after_range             = 3
+      date_before_range            = 4
+      date_invalid                 = 5
+      factory_calendar_not_found   = 6
+      OTHERS                       = 7.
+
+ENDMETHOD.
+
+
+METHOD get_stvarv.
+
+  FIELD-SYMBOLS:
+    <fs_rg_line> LIKE LINE OF r_range.
+
+  SELECT sign
+         opti AS option
+         low
+         high
+    INTO CORRESPONDING FIELDS OF TABLE r_range
+    FROM tvarvc
+    WHERE name = i_const.
+
+  IF sy-subrc <> 0.
+
+    SELECT valsign AS sign
+           valoption AS option
+           valfrom AS low
+           valto AS high
+      INTO CORRESPONDING FIELDS OF TABLE r_range
+      FROM setleaf
+      WHERE setname = i_const.
+
+  ENDIF.
+
+  LOOP AT r_range ASSIGNING <fs_rg_line>.
+    IF <fs_rg_line>-sign IS INITIAL.
+      <fs_rg_line>-sign = 'I'.
+    ENDIF.
+
+    IF <fs_rg_line>-option IS INITIAL.
+      IF <fs_rg_line>-high IS INITIAL.
+        <fs_rg_line>-option = 'EQ'.
+      ELSE.
+        <fs_rg_line>-option = 'BT'.
+      ENDIF.
+    ENDIF.
+
+  ENDLOOP.
+
+  IF r_range IS INITIAL AND i_no_msg IS INITIAL.
+    MESSAGE w000(zmm) WITH text-001 i_const.
+  ENDIF.
+
+ENDMETHOD.
+
+
+METHOD GET_STVARV_NEW.
+
+  FIELD-SYMBOLS:
+    <fs_rg_line> LIKE LINE OF re_range.
+
+  SELECT sign
+         opti AS option
+         low
+         high
+    INTO CORRESPONDING FIELDS OF TABLE re_range
+    FROM tvarvc
+    WHERE name = im_const.
+
+  IF sy-subrc <> 0.
+
+    SELECT valsign AS sign
+           valoption AS option
+           valfrom AS low
+           valto AS high
+      INTO CORRESPONDING FIELDS OF TABLE re_range
+      FROM setleaf
+      WHERE setname = im_const.
+
+  ENDIF.
+
+  LOOP AT re_range ASSIGNING <fs_rg_line>.
+    IF <fs_rg_line>-sign IS INITIAL.
+      <fs_rg_line>-sign = 'I'.
+    ENDIF.
+
+    IF <fs_rg_line>-option IS INITIAL.
+      IF <fs_rg_line>-high IS INITIAL.
+        <fs_rg_line>-option = 'EQ'.
+      ELSE.
+        <fs_rg_line>-option = 'BT'.
+      ENDIF.
+    ENDIF.
+
+  ENDLOOP.
+
+  IF re_range IS INITIAL AND im_no_msg IS INITIAL.
+    MESSAGE w000(zmm) WITH text-001 im_const.
+  ENDIF.
+
+ENDMETHOD.
+
+
+method initcaps.
+
+DATA: l_count TYPE i,
+      l_len TYPE i.
+
+rv_string = iv_string.
+
+l_len = strlen( rv_string ).
+CONDENSE rv_string.
+TRANSLATE rv_string+0(1) TO UPPER CASE.
+
+DO l_len TIMES.
+  IF rv_string+l_count(1) EQ space.
+    ADD 1 TO l_count.
+    TRANSLATE rv_string+l_count(1) TO UPPER CASE.
+    CONTINUE.
+  ENDIF.
+
+  ADD 1 TO l_count.
+  if l_count < l_len.
+    TRANSLATE rv_string+l_count(1) TO LOWER CASE.
+  endif.
+ENDDO.
+
+*  call FUNCTION 'STRING_UPPER_LOWER_CASE'
+*    exporting
+*      delimiter = space
+*      string1   = iv_string
+*    importing
+*      string    = rv_string
+*    exceptions
+*      not_valid = 1
+*      too_long  = 2
+*      too_small = 3
+*      others    = 4
+*    .
+*
+*  if sy-subrc <> 0.
+*   message id sy-msgid type sy-msgty number sy-msgno
+*              with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+*  endif.
+endmethod.
+
+
+  METHOD read_text.
+
+    call function 'READ_TEXT'
+      exporting
+        id                      = iv_id
+        language                = iv_language
+        name                    = iv_name
+        object                  = iv_object
+      tables
+        lines                   = rt_lines
+      exceptions
+        id                      = 1
+        language                = 2
+        name                    = 3
+        not_found               = 4
+        object                  = 5
+        reference_check         = 6
+        wrong_access_to_archive = 7
+        others                  = 8
+      .
+    if sy-subrc <> 0 and iv_display_errors = abap_true.
+     message id sy-msgid type sy-msgty number sy-msgno
+         with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+  ENDMETHOD.
+
+
+  METHOD send_mail.
+*/*-------------------------------------------------
+* Objetivo: Método para envio de email padrão
+* Autor: OBM230919
+* CPS / Chamado: Fluig 81614
+* Request: ECDK951467
+*-------------------------------------------------*/
+
+    CONSTANTS: c_bhtml(6)      TYPE c VALUE '<html>',
+               c_ehtml(7)      TYPE c VALUE '</html>',
+               c_bhead(6)      TYPE c VALUE '<head>',
+               c_ehead(7)      TYPE c VALUE '</head>',
+               c_divmail(66)   TYPE c VALUE '<div id="email" style="font-family: sans-serif; font-size: 14px;">',
+               c_divlogo(15)   TYPE c VALUE '<div id="logo">',
+               c_imglogo(62)   TYPE c VALUE '<img src="https://www.wilsonsons.com.br/assets/img/logo.png"/>',
+               c_ediv(6)       TYPE c VALUE '</div>',
+               c_br(5)         TYPE c VALUE '<br/>',
+               c_divalignl(18) TYPE c VALUE '<div align="left">',
+               c_divalignc(20) TYPE c VALUE '<div align="center">',
+               c_divalignj(20) TYPE c VALUE '<div align="justify">',
+               c_bbody(6)      TYPE c VALUE '<body>',
+               c_ebody(7)      TYPE c VALUE '</body>',
+               c_btitle(7)     TYPE c VALUE '<title>',
+               c_etitle(8)     TYPE c VALUE '</title>',
+               c_bfsize5(15)   TYPE c VALUE '<font size="5">',
+               c_efsize(7)     TYPE c VALUE '</font>',
+               c_btable(210)   TYPE c VALUE '<table border="1" width="95%" style="border-top: 1px dotted #000000;border-right: 1px dotted #000000;border-bottom: 1px dotted #000080;border-left: 1px dotted #000000;font-family: sans-serif;font-size:14px;">',
+               c_etable(8)     TYPE c VALUE '</table>',
+               c_trstyle(69)   TYPE c VALUE '<tr style="background-color:#000080;color: white;font-weight: bold;">',
+               c_btr(4)        TYPE c VALUE '<tr>',
+               c_etr(5)        TYPE c VALUE '</tr>',
+               c_bth(4)        TYPE c VALUE '<th>',
+               c_eth(5)        TYPE c VALUE '</th>',
+               c_btd(4)        TYPE c VALUE '<td>',
+               c_etd(5)        TYPE c VALUE '</td>'.
+
+    DATA: ge_document_data TYPE sodocchgi1,
+          gt_sopcklsti1    TYPE STANDARD TABLE OF sopcklsti1,
+          ge_sopcklsti1    TYPE sopcklsti1,
+          gt_contenttxt    TYPE STANDARD TABLE OF  solisti1,
+          ge_contenttxt    TYPE solisti1,
+          gt_receivers     TYPE STANDARD TABLE OF somlreci1,
+          lv_mailtxt_size  TYPE i,
+          c_texto_email    TYPE c LENGTH 4025.
+
+    IF NOT t_contenttxt[] IS INITIAL.
+*** Inícializa o html
+      ge_contenttxt-line = c_bhtml.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Insere o título
+      CONCATENATE c_bhead c_btitle p_titulo c_etitle c_ehead INTO ge_contenttxt-line." SEPARATED BY space.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Inicializa o body
+      ge_contenttxt-line = c_bbody.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Insere o estilo
+      ge_contenttxt-line = c_divmail.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Insere o logo
+      ge_contenttxt-line = c_divlogo.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+      ge_contenttxt-line = c_imglogo.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+      ge_contenttxt-line = c_ediv.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Insere brancos
+      ge_contenttxt-line = c_br.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+      ge_contenttxt-line = c_br.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+      IF NOT p_titulo_corpo IS INITIAL.
+*** Alinha centralizado
+        ge_contenttxt-line = c_divalignc.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Insere o texto do título do corpo do email
+        CONCATENATE c_bfsize5 p_titulo_corpo c_efsize INTO ge_contenttxt-line.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Insere brancos
+        ge_contenttxt-line = c_br.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+        ge_contenttxt-line = c_br.
+        APPEND ge_contenttxt TO gt_contenttxt.
+      ENDIF.
+
+
+      IF NOT t_texto_corpo[] IS INITIAL.
+*** Alinha justificado
+        ge_contenttxt-line = c_divalignj.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Inicializa Fonte 5
+        ge_contenttxt-line = c_bfsize5.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Insere o texto do corpo do email
+        LOOP AT t_texto_corpo INTO DATA(ls_textocorpo).
+          CONCATENATE ls_textocorpo-line
+                      c_br
+                 INTO ge_contenttxt-line.
+
+          APPEND ge_contenttxt TO gt_contenttxt.
+        ENDLOOP.
+
+*** Finaliza Fonte 5
+        ge_contenttxt-line = c_efsize.
+        APPEND ge_contenttxt TO gt_contenttxt.
+      ENDIF.
+
+*** Insere brancos
+      ge_contenttxt-line = c_br.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+      ge_contenttxt-line = c_br.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Alinha ao centro
+      ge_contenttxt-line = c_divalignc.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Inicializa a tabela
+      ge_contenttxt-line = c_btable.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Insere estilo do cabeçalho
+      ge_contenttxt-line = c_trstyle.
+      APPEND ge_contenttxt TO gt_contenttxt.
+*** Insere a tabela de dados na tabela final
+      APPEND LINES OF t_contenttxt TO gt_contenttxt.
+
+***   Finaliza a tabela
+      ge_contenttxt-line = c_etable.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Insere brancos
+      ge_contenttxt-line = c_br.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+      IF NOT t_footer[] IS INITIAL.
+*** Alinha justificado
+        ge_contenttxt-line = c_divalignj.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Inicializa Fonte 5
+        ge_contenttxt-line = c_bfsize5.
+        APPEND ge_contenttxt TO gt_contenttxt.
+
+*** Insere o texto do rodapé do email
+        LOOP AT t_footer INTO DATA(ls_footer).
+          CONCATENATE ls_footer-line
+                      c_br
+                 INTO ge_contenttxt-line.
+          APPEND ge_contenttxt TO gt_contenttxt.
+        ENDLOOP.
+
+*** Finaliza Fonte 5
+        ge_contenttxt-line = c_efsize.
+        APPEND ge_contenttxt TO gt_contenttxt.
+      ENDIF.
+
+***   Finaliza o html
+      CONCATENATE c_ebody c_ehtml INTO ge_contenttxt-line.
+      APPEND ge_contenttxt TO gt_contenttxt.
+
+*---- MONTA O ASSUNTO DO EMAIL
+      DESCRIBE TABLE gt_contenttxt LINES lv_mailtxt_size.
+      ge_document_data-obj_descr = p_assunto.
+      ge_document_data-sensitivty = 'F'.
+      ge_document_data-doc_size   = lv_mailtxt_size * 255.
+*---- MONTA A CONFIGURAÇÃO DO EMAIL
+      ge_sopcklsti1-transf_bin = ''.
+      ge_sopcklsti1-head_start = 1.
+      ge_sopcklsti1-head_num   = 0.
+      ge_sopcklsti1-body_start = 1.
+      ge_sopcklsti1-body_num   = lv_mailtxt_size.
+      ge_sopcklsti1-doc_type   = 'HTM'.
+      APPEND  ge_sopcklsti1 TO gt_sopcklsti1.
+
+      gt_receivers = t_receivers.
+
+*---- DISPARA O EMAIL
+      CALL FUNCTION 'SO_NEW_DOCUMENT_ATT_SEND_API1'
+        EXPORTING
+          document_data              = ge_document_data
+          put_in_outbox              = 'X'
+          commit_work                = 'X'
+        TABLES
+          packing_list               = gt_sopcklsti1[]
+          receivers                  = gt_receivers[]
+          contents_txt               = gt_contenttxt[]
+        EXCEPTIONS
+          too_many_receivers         = 1
+          document_not_sent          = 2
+          document_type_not_exist    = 3
+          operation_no_authorization = 4
+          parameter_error            = 5
+          x_error                    = 6
+          enqueue_error              = 7
+          OTHERS                     = 8.
+
+      CASE sy-subrc.
+        WHEN 0.
+        WHEN 1.
+          RAISE too_many_receivers.
+        WHEN 2.
+          RAISE document_not_sent.
+        WHEN 3.
+          RAISE document_type_not_exist.
+        WHEN 4.
+          RAISE operation_no_authorization.
+        WHEN 5.
+          RAISE parameter_error.
+        WHEN 7.
+          RAISE enqueue_error .
+        WHEN OTHERS.
+          RAISE x_error.
+      ENDCASE.
+
+    ENDIF.
+
+  ENDMETHOD.
+
+
+METHOD syst_to_bapiret2.
+
+  DATA: lc_msgno TYPE msgnr.
+
+  MOVE: i_syst-msgid TO e_bapiret2-id,
+        i_syst-msgty TO e_bapiret2-type,
+        i_syst-msgno TO e_bapiret2-number,
+        i_syst-msgno TO lc_msgno,
+        i_syst-msgv1 TO e_bapiret2-message_v1,
+        i_syst-msgv2 TO e_bapiret2-message_v2,
+        i_syst-msgv3 TO e_bapiret2-message_v3,
+        i_syst-msgv4 TO e_bapiret2-message_v4.
+
+  CALL FUNCTION 'MESSAGE_PREPARE'
+    EXPORTING
+      language               = sy-langu
+      msg_id                 = e_bapiret2-id
+      msg_no                 = lc_msgno
+      msg_var1               = e_bapiret2-message_v1
+      msg_var2               = e_bapiret2-message_v2
+      msg_var3               = e_bapiret2-message_v3
+      msg_var4               = e_bapiret2-message_v4
+    IMPORTING
+      msg_text               = e_bapiret2-message
+    EXCEPTIONS
+      function_not_completed = 1
+      message_not_found      = 2
+      OTHERS                 = 3.
+
+ENDMETHOD.
+ENDCLASS.
