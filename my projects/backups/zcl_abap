@@ -1,0 +1,851 @@
+class ZCL_ABAP definition
+  public
+  create public .
+
+public section.
+
+  class-data O_ME type ref to ZCL_ABAP .
+
+  class-methods GET_I
+    returning
+      value(RO_ME) type ref to ZCL_ABAP .
+  methods READ_SCREEN_FIELDS
+    importing
+      !E_FIELDNAME type CLIKE
+      !E_DYNNR type SYDYNNR
+    returning
+      value(R_VALUE) type CHAR30 .
+  class-methods SUBMIT_REPORT
+    importing
+      !IT_JSON_RSPAR_TAB type STRING
+    returning
+      value(R_JSON_OUTTAB) type STRING .
+  methods POPUP_TO_CONFIRM
+    importing
+      !E_QUESTION type STRING
+    returning
+      value(R_ANSWER) type STRING .
+  methods POPUP_TO_INFORM
+    importing
+      !E_TITLE type CHAR35 optional
+      !E_TEXT1 type ANY optional
+      !E_TEXT2 type ANY optional
+      !E_TEXT3 type ANY optional
+      !E_TEXT4 type ANY optional .
+  methods DISPLAY_KURSF
+    importing
+      !IV_KURSF type KURSF
+    returning
+      value(RV_KURSF) type CHAR11 .
+  methods DISPLAY_AS_CURR
+    importing
+      !E_STRING type STRING
+    returning
+      value(R_CURR) type STRING .
+  class-methods MESSAGES_INITIALIZE .
+  class-methods MESSAGES_STORE
+    importing
+      !E_MSG_ID type ARBGB optional
+      !E_MSG_TY type MSGTY optional
+      !E_MSG_V1 type ANY optional
+      !E_MSG_V2 type ANY optional
+      !E_MSG_NR type ANY optional
+      !E_MSG_ZL type ANY optional .
+  class-methods MESSAGES_SHOW .
+  class-methods MESSAGES_COUNT
+    returning
+      value(RV_COUNT) type SYST_TABIX .
+  methods CONVERSION_EXIT_ALPHA
+    importing
+      !E_INPUT type CLIKE optional
+    returning
+      value(R_OUTPUT) type CHAR20 .
+  class-methods AUTH_CHECK_TCODE
+    importing
+      !E_TCODE type TCODE
+    returning
+      value(R_IS_INVALID_USER) type ABAP_BOOL .
+  class-methods CONV_DATUM_TO_PT
+    importing
+      !I_DATUM type SYDATUM
+    returning
+      value(R_DATUM) type SYDATUM .
+  class-methods ADD_SEPARATOR
+    importing
+      !I_DATUM type SYDATUM
+      !I_SEPARATOR type CHAR1 optional
+    returning
+      value(R_DATUM) type CHAR10 .
+  class-methods ADD_DAYS_TO_DATE
+    importing
+      !I_DATE type SYST_DATUM
+      !I_DAYS type I
+    returning
+      value(R_FINAL_DATE) type SYST_DATUM .
+  class-methods GO_BACK_MONTHS
+    importing
+      !IV_DATE type SYST_DATUM
+      !IV_BACKMONTHS type NUMC3
+    returning
+      value(RV_DATE) type SYST_DATUM .
+  class-methods GET_BUKRS_TEXT
+    importing
+      !IV_BUKRS type BUKRS
+    returning
+      value(RV_BUTXT) type BUTXT .
+  class-methods LAST_DAY_OF_MONTH
+    importing
+      !IV_DATE type CHAR8
+    returning
+      value(RV_LAST_DAY_DATE) type SYST_DATUM .
+  class-methods GET_EXCHANGE_RATE
+    importing
+      value(IV_DATE) type SYST_DATUM
+      value(IV_FROM_CURR) type FCURR_CURR
+      value(IV_TO_CURR) type FCURR_CURR
+    returning
+      value(RV_EXCHANGE_RATE) type KURSF .
+  class-methods GET_STRUC_BY_NAME
+    importing
+      !IV_NAME type ANY
+    returning
+      value(RS_RETURN) type ref to DATA .
+  class-methods GET_STRUC_BY_DATA
+    importing
+      !I_DATA type ANY
+    returning
+      value(RS_RETURN) type ref to DATA .
+  class-methods SELECT_SINGLE
+    importing
+      !I_FROM type ANY
+      !I_WHERE type ANY
+    exporting
+      !E_RESULT type ANY
+    returning
+      value(R_DATA) type ref to DATA .
+  class-methods CHECK_AUTH_TIN3
+    returning
+      value(R_RESULT) type ABAP_BOOL .
+  class-methods SECONDS_TO_HHMMSS
+    importing
+      !IV_SECONDS type F
+      !IV_SEPARATOR type ABAP_BOOL optional
+    returning
+      value(RV_HHMMSS) type CHAR8 .
+  class-methods DEC_TIME_TO_HHMMSS
+    importing
+      !IV_TIM type ISMNW
+    returning
+      value(RV_TIME_HHMMSS) like SY-UZEIT .
+  methods GET_DESC_FROM_HBKID
+    importing
+      !IV_HBKID type HBKID
+    returning
+      value(RV_ZDESCRICAO_BANCO) type FIBL_TXT50 .
+  methods GET_NEXT
+    importing
+      !I_RANGE_NR type NRNR
+      !I_OBJECT type NROBJ
+    returning
+      value(R_VALUE) type STRING .
+  methods GET_OPER_DESC
+    importing
+      !IV_OPERACAO type ZOPERACAO_MC
+    returning
+      value(RV_OPER) type ZDESCRICAO_FLUXO .
+  methods GET_RAZAO_SOCIAL
+    importing
+      !IV_CODIGO type CHAR10
+      !IV_TIPO type KOART optional
+    returning
+      value(RV_NAME1) type NAME1_GP .
+  methods GET_PARTIES
+    importing
+      !IV_NAME type NAME1_GP
+    returning
+      value(RV_PARTY_CODE) type CHAR10 .
+  protected section.
+
+  private section.
+
+    methods shift_string_left
+      importing
+        e_text        type any
+      returning
+        value(r_text) type string.
+
+ENDCLASS.
+
+
+
+CLASS ZCL_ABAP IMPLEMENTATION.
+
+
+  method add_days_to_date.
+
+    call function 'ADD_BUSINESS_DAYS_TO_DATE'
+      exporting
+        iv_reference_date          = i_date
+        iv_number_of_business_days = i_days
+        it_calendars               = value vtb_tab_calendar( ( 'BR' ) )
+      importing
+        ev_date                    = r_final_date.
+
+  endmethod.
+
+
+  method add_separator.
+
+    r_datum = i_datum(2) &&
+              i_separator &&
+              i_datum+2(2) &&
+              i_separator &&
+              i_datum+4(4).
+
+  endmethod.
+
+
+  method auth_check_tcode.
+
+    call function 'AUTHORITY_CHECK_TCODE'
+      exporting
+        tcode  = e_tcode
+      exceptions
+        ok     = 1
+        not_ok = 2
+        others = 3.
+
+    if sy-subrc <> 1.
+      r_is_invalid_user = abap_on.
+      message s056(zfi) display like 'E'.
+    endif.
+
+  endmethod.
+
+
+  method check_auth_tin3.
+
+    data:
+      lt_activitygroups type standard table of bapiagr,
+      lt_return         type standard table of bapiret2.
+
+    call function 'BAPI_USER_GET_DETAIL'
+      exporting
+        username       = sy-uname
+      tables
+        return         = lt_return
+        activitygroups = lt_activitygroups.
+
+    check line_exists( lt_activitygroups[ agr_name = 'Z:TI_NIVEL_3' ] ).
+
+    r_result = abap_true.
+
+  endmethod.
+
+
+  method conversion_exit_alpha.
+
+    call 'CONVERSION_EXIT_ALPHA_INPUT'  id 'INPUT'  field e_input
+                                        id 'OUTPUT' field r_output.
+
+  endmethod.
+
+
+  method conv_datum_to_pt.
+
+    r_datum = |{ i_datum+6(2) }{ i_datum+4(2) }{ i_datum(4) }|.
+
+  endmethod.
+
+
+  method dec_time_to_hhmmss.
+
+    data: hour(2) type n,
+          min(2)  type n,
+          sec(2)  type n,
+          tim     type ismnw.
+
+    tim = iv_tim.
+
+    data: time type p decimals 2.
+    data: timeformat type sy-uzeit.
+    time = 1."'1.38'.
+
+    tim = tim * 3600.
+    hour = tim div 3600.
+    tim = tim mod 3600.
+    min = tim div 60.
+    sec = tim mod 60.
+
+    concatenate hour min sec into rv_time_hhmmss.
+
+  endmethod.
+
+
+  method display_as_curr.
+
+    check e_string is not initial.
+
+    data(len_no_decimals) = ( strlen( e_string ) - 3 ) - 1.
+
+    data(len_separator) = cond #(
+      when len_no_decimals mod 3 = 0
+       then 3
+      else len_no_decimals mod 3
+    ).
+
+    data len_converted like len_separator.
+
+    do cond numc10(
+            let len_remainder = len_no_decimals mod 3 in
+            when len_remainder = 0
+             then len_no_decimals div 3
+            else 1 + len_no_decimals div 3
+       ) times.
+
+      r_curr = cond #(
+           let input = e_string(len_no_decimals) in
+           when input is not initial
+            then r_curr
+              && input+len_converted(len_separator)
+              && |.|
+      ).
+
+      add len_separator to len_converted.
+
+      len_separator = 3.
+
+      get run time field data(lv_run_time).
+
+      check lv_run_time > 10000000000.
+
+      exit.
+
+    enddo.
+
+    data(len_new_format) = strlen( r_curr ) - 1.
+
+    data(len_decimals) = len_no_decimals + 1.
+
+    r_curr = cond #(
+      when len_new_format > 0
+       then |{ r_curr(len_new_format) },{ e_string+len_decimals(2) }|
+       else r_curr
+    ).
+
+    r_curr = cond #(
+         let last_pos = strlen( e_string ) - 1 in
+         when e_string+last_pos(1) = '-'
+          then '-' && r_curr
+         else r_curr
+    ).
+
+  endmethod.
+
+
+  method display_kursf.
+
+    data lv_char_kursf type char10.
+
+    lv_char_kursf = iv_kursf.
+
+    rv_kursf = lv_char_kursf(3) && |,| && lv_char_kursf+4(5).
+
+  endmethod.
+
+
+  method get_bukrs_text.
+
+    select single butxt
+     from t001
+     where bukrs = @iv_bukrs
+       and spras = @sy-langu
+     into @rv_butxt.
+
+  endmethod.
+
+
+  method get_desc_from_hbkid.
+
+    select single zdescricao_banco
+     from ztfi_banco_emp
+     where zbanco_emp  = @iv_hbkid
+     into @rv_zdescricao_banco.
+
+  endmethod.
+
+
+  method get_exchange_rate.
+
+    call function 'READ_EXCHANGE_RATE'
+      exporting
+        date             = iv_date    " Currency translation date
+        foreign_currency = iv_from_curr       " Currency key for foreign currency
+        local_currency   = iv_to_curr                      " Currency key for local currency
+        type_of_rate     = cond #( when iv_from_curr = 'EUR' then 'EURO' else 'M' )  " Type of rate M=Average rate G=Bank buying rate B=bank sellin
+      importing
+        exchange_rate    = rv_exchange_rate.    " Exchange rate
+
+  endmethod.
+
+
+  method get_i.
+
+    o_me = ro_me = cond #(
+          when o_me is bound
+           then o_me
+          else
+           new zcl_abap( )
+    ).
+
+  endmethod.
+
+
+  method get_next.
+
+    call function 'NUMBER_GET_NEXT'
+      exporting
+        nr_range_nr             = i_range_nr
+        object                  = i_object
+      importing
+        number                  = r_value
+      exceptions
+        interval_not_found      = 1
+        number_range_not_intern = 2
+        object_not_found        = 3
+        quantity_is_0           = 4
+        quantity_is_not_1       = 5
+        interval_overflow       = 6
+        buffer_overflow         = 7
+        others                  = 8.
+
+  endmethod.
+
+
+  method get_oper_desc.
+
+    select single zdescricao
+     from ztfi_operacao
+     where zoperacao = @iv_operacao
+     into @rv_oper.
+
+  endmethod.
+
+
+  method get_parties.
+
+    select single lifnr
+      from lfa1
+     where name1 = @iv_name
+     into @rv_party_code.
+
+    check rv_party_code is initial.
+
+    select single kunnr
+      from kna1
+     where name1 = @iv_name
+     into @rv_party_code.
+
+  endmethod.
+
+
+  method get_razao_social.
+
+    if iv_tipo is initial.
+
+      select single name1
+        from kna1
+       where kunnr = @iv_codigo
+       into @rv_name1.
+
+      check rv_name1 is initial.
+
+      select single name1
+        from lfa1
+       where lifnr = @iv_codigo
+       into @rv_name1.
+
+    elseif iv_tipo = 'D'.
+
+      select single name1
+        from kna1
+       where kunnr = @iv_codigo
+       into @rv_name1.
+
+    elseif iv_tipo = 'K'.
+
+      select single name1
+        from lfa1
+       where lifnr = @iv_codigo
+       into @rv_name1.
+
+    endif.
+
+  endmethod.
+
+
+  method get_struc_by_data.
+
+    data: lo_structdescr type ref to cl_abap_structdescr,
+          lo_tabdescr    type ref to cl_abap_tabledescr.
+
+    data(lo_typedescr) = cl_abap_typedescr=>describe_by_data( i_data ).
+
+    if lo_typedescr->kind = 'T'.
+
+      lo_tabdescr ?= lo_typedescr.
+
+      data(lv_type) = lo_tabdescr->get_table_line_type( ).
+
+      lo_structdescr ?= cl_abap_typedescr=>describe_by_data( lv_type ).
+
+    elseif lo_typedescr->kind = 'S'.
+
+      lo_structdescr ?= lo_typedescr.
+
+    else.
+
+      exit.
+
+    endif.
+
+    try.
+
+        data(ls_type_struct) = cl_abap_structdescr=>create( p_components = lo_structdescr->get_components( ) ).
+
+        create data rs_return type handle ls_type_struct.
+
+*        data l_data    type ref to data.
+*
+*        create data l_data type handle ls_type_struct.
+*
+*        assign l_data->* to field-symbol(<fs_return>).
+*
+*        check <fs_return> is assigned.
+*
+*        rs_return = <fs_return>.
+
+      catch cx_sy_struct_creation .
+
+    endtry.
+
+  endmethod.
+
+
+  method get_struc_by_name.
+
+    data: lo_structdescr type ref to cl_abap_structdescr,
+          lo_tabdescr    type ref to cl_abap_tabledescr.
+
+    data(lo_typedescr) = cl_abap_typedescr=>describe_by_name( iv_name ).
+
+    if lo_typedescr->kind = 'T'.
+
+      lo_tabdescr ?= lo_typedescr.
+
+      data(lv_type) = lo_tabdescr->get_table_line_type( ).
+
+      lo_structdescr ?= cl_abap_typedescr=>describe_by_data( lv_type ).
+
+    elseif lo_typedescr->kind = 'S'.
+
+      lo_structdescr ?= lo_typedescr.
+
+    else.
+
+      exit.
+
+    endif.
+
+    try.
+
+        data(ls_type_struct) = cl_abap_structdescr=>create( p_components = lo_structdescr->get_components( ) ).
+
+        create data rs_return type handle ls_type_struct.
+
+*        data l_data    type ref to data.
+*
+*        create data l_data type handle ls_type_struct.
+*
+*        assign l_data->* to field-symbol(<fs_return>).
+*
+*        check <fs_return> is assigned.
+*
+*        rs_return = <fs_return>.
+
+      catch cx_sy_struct_creation .
+
+    endtry.
+
+  endmethod.
+
+
+  method go_back_months.
+
+    data lv_backmonths type numc3.
+
+    lv_backmonths = cond #( when iv_backmonths is not initial then iv_backmonths else 1 ).
+
+    call function 'CCM_GO_BACK_MONTHS'
+      exporting
+        currdate   = iv_date
+        backmonths = lv_backmonths
+      importing
+        newdate    = rv_date.
+
+  endmethod.
+
+
+  method last_day_of_month.
+
+    call function 'RP_LAST_DAY_OF_MONTHS'
+      exporting
+        day_in            = conv syst_datum( iv_date )
+      importing
+        last_day_of_month = rv_last_day_date
+      exceptions
+        day_in_no_date    = 1
+        others            = 2.
+
+  endmethod.
+
+
+  method messages_count.
+
+    call function 'MESSAGES_COUNT'
+      importing
+        count = rv_count.
+
+  endmethod.
+
+
+  method messages_initialize.
+
+    call function 'MESSAGES_INITIALIZE'
+      exceptions
+        log_not_active       = 1
+        wrong_identification = 2
+        others               = 3.
+
+  endmethod.
+
+
+  method messages_show.
+
+    call function 'MESSAGES_SHOW'
+      exceptions
+        inconsistent_range = 1
+        no_messages        = 2
+        others             = 3.
+
+  endmethod.
+
+
+  method messages_store.
+
+    call function 'MESSAGE_STORE'
+      exporting
+        arbgb                  = e_msg_id
+        msgty                  = e_msg_ty
+        msgv1                  = e_msg_v1
+        msgv2                  = e_msg_v2
+        txtnr                  = e_msg_nr
+        zeile                  = e_msg_zl
+      exceptions
+        message_type_not_valid = 1
+        not_active             = 2
+        others                 = 3.
+
+  endmethod.
+
+
+  method popup_to_confirm.
+
+    call function 'POPUP_TO_CONFIRM'
+      exporting
+        text_question  = e_question
+        text_button_1  = 'Sim'(006)    " Text of first alternative
+        text_button_2  = 'Não'(007)    " Text of second alternative
+        titlebar       = 'Confirma'(008)    " Title line of dialog box
+      importing
+        answer         = r_answer
+      exceptions
+        text_not_found = 01
+        others         = 02.
+
+  endmethod.
+
+
+  method popup_to_inform.
+
+    if e_text1 is not initial
+    or e_text2 is not initial.
+
+      call function 'POPUP_TO_DISPLAY_TEXT'
+        exporting
+          titel     = e_title
+          textline1 = shift_string_left( e_text1 )
+          textline2 = shift_string_left( e_text2 ).
+
+    endif.
+
+  endmethod.
+
+
+  method read_screen_fields.
+
+    data: lv_step_line like sy-stepl.
+
+    call function 'DYNP_GET_STEPL'
+      importing
+        povstepl        = lv_step_line
+      exceptions
+        stepl_not_found = 1
+        others          = 2.
+
+    data(lt_dyn_fields_read) = value dynpread_t(
+       ( fieldname = e_fieldname stepl = lv_step_line )
+    ).
+
+    call function 'DYNP_VALUES_READ'
+      exporting
+        dyname     = sy-cprog
+        dynumb     = e_dynnr
+      tables
+        dynpfields = lt_dyn_fields_read.
+
+  endmethod.
+
+
+  method seconds_to_hhmmss.
+
+    data(lv_horas_disponiveis) = iv_seconds div 3600.
+    data(lv_min_disponiveis) = iv_seconds mod 3600.
+    data(lv_seg_disponiveis) = lv_min_disponiveis mod 60.
+    lv_min_disponiveis = lv_min_disponiveis div 60.
+
+    if iv_separator = abap_on.
+
+      rv_hhmmss = |{ conv numc2( lv_horas_disponiveis ) }:{ conv numc2( lv_min_disponiveis ) }:{ conv numc2( lv_seg_disponiveis ) }|.
+
+    else.
+
+      rv_hhmmss = conv numc2( lv_horas_disponiveis ) && conv numc2( lv_min_disponiveis ) && conv numc2( lv_seg_disponiveis ).
+
+    endif.
+
+  endmethod.
+
+
+  method select_single.
+
+    r_data = get_struc_by_name( i_from ).
+
+    assign r_data->* to field-symbol(<fs_tab_line>).
+
+    select single *
+       from (i_from)
+       where (i_where)
+       into @<fs_tab_line>.
+
+    e_result = <fs_tab_line>.
+
+  endmethod.
+
+
+  method shift_string_left.
+
+    r_text = conv string( e_text ).
+
+    shift r_text left deleting leading ''.
+
+  endmethod.
+
+
+  method submit_report.
+
+    data: rspar_tab type table of rsparams,
+          range_tab type range of c.
+
+    /ui2/cl_json=>deserialize(
+        exporting
+            json = it_json_rspar_tab
+            pretty_name = /ui2/cl_json=>pretty_mode-low_case
+        changing data = rspar_tab
+    ).
+
+    try.
+
+        data(lv_rep_name) = rspar_tab[ selname = 'REPORT_N' ]-low.
+
+        data(lr_allowed_reports) = zwcl_abap_utils=>get_stvarv_new( 'ZREPORTS_DINAMICOS' ).
+
+        if lv_rep_name in lr_allowed_reports.
+
+            try.
+
+                data(lv_sel_screen) = rspar_tab[ selname = 'SEL_SCREEN' ]-low.
+
+              catch cx_sy_itab_line_not_found.
+
+                lv_sel_screen = '1000'.
+
+            endtry.
+
+            if lv_sel_screen is initial.
+
+
+
+            endif.
+
+            cl_salv_bs_runtime_info=>set(
+               exporting display = abap_false
+               metadata = abap_true
+               data = abap_true
+            ).
+
+            try.
+
+                data(lv_variant) = rspar_tab[ selname = 'P_VARIANT' ]-low.
+
+                submit (lv_rep_name) using selection-set lv_variant
+                 exporting list to memory and return.
+
+            catch cx_sy_itab_line_not_found.
+
+                submit (lv_rep_name) using selection-screen lv_sel_screen
+                               with selection-table rspar_tab
+                               exporting list to memory and return.
+
+            endtry.
+
+            break mbmm.
+
+            data gt_alv_table type ref to data.
+
+            try.
+                cl_salv_bs_runtime_info=>get_data_ref(
+                importing r_data = gt_alv_table ).
+                assign gt_alv_table->* to field-symbol(<f_alv_data>).
+
+                cl_salv_bs_runtime_info=>clear_all( ).
+
+                r_json_outtab = /ui2/cl_json=>serialize( data = <f_alv_data>
+                  pretty_name = /ui2/cl_json=>pretty_mode-low_case ).
+
+              catch cx_salv_bs_sc_runtime_info.
+                message 'Erro ao ler tabela de output' type 'S' display like 'E'.
+            endtry.
+
+      else.
+
+        message 'Report não cadastrado em stvarv ZREPORTS_DINAMICOS' type 'S' display like 'E'.
+
+      endif.
+
+      catch cx_sy_itab_line_not_found.
+
+    endtry.
+
+  endmethod.
+ENDCLASS.
