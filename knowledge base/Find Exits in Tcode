@@ -1,0 +1,13 @@
+1. Open transaction SE24.
+
+2. Now open the object CL_EXITHANDLER in display mode.
+
+3. Go to the method tab and double click on the method GET_INSTANCE.
+
+4. Put a break point on cl_exithandler=>get_class_name_by_interface.
+
+5. Now execute the transaction you want to find EXIT for, it will take you to the above method.
+
+6. Write EXIT_HANDLER in fieldnames and hit enter, it will tell you the EXIT used for your transaction.
+
+7. Hit F8 and it will tell you all the EXITu2019s for your transaction.
