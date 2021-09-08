@@ -1,0 +1,5 @@
+zcl_enho_**->get_instance()->method(
+
+  changing ch_program_data = l_program_data
+
+)
