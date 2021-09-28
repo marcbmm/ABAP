@@ -1,0 +1,26 @@
+tables sscrfields.
+
+data:
+    ls_struc type struc.
+
+selection-screen begin of block 1 with frame title text-001.
+
+   selection-screen:
+   skip 2,
+   PUSHBUTTON 2(50) text-002 USER-COMMAND bt1
+                           VISIBLE LENGTH 79,
+   skip 2,
+   PUSHBUTTON 2(50) text-003 USER-COMMAND bt2
+                           VISIBLE LENGTH 79.
+
+selection-screen end of block 1.
+
+selection-screen skip 1.
+
+AT SELECTION-SCREEN.
+  CASE sscrfields-ucomm.
+    WHEN 'BT1'.
+      call transaction 'ZJ_1BTXJURV'.
+    WHEN 'BT2'.
+      call transaction 'ZJ_1BTREG_CITYV'.
+  ENDCASE.
